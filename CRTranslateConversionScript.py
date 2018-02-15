@@ -14,9 +14,13 @@ def isValidFile(parser, arg, type):
 
 # Conversion methods.
 def srtToTsv(text):
-    regex = re.compile('(\d+)\s+(\d+:\d+\d+:\d+,\d+ --> \d+:\d+:\d+,\d+)\s+(.+)(\s*)')
+    regex = re.compile('(\d+)\s+(\d+:\d+\d+:\d+,\d+ --> \d+:\d+:\d+,\d+)\s+(.+\s?.+\s?.+\s?)')
     normalizedQuotes = re.sub(ur'[\u0022\u201C\u201D]+', "*quotation mark*", text)
-    return regex.sub(r'\1\t\2\t\3\n',normalizedQuotes)
+    matches = regex.findall(normalizedQuotes)
+    formattedList = []
+    for match in matches:
+        if match[0].isdigit(): formattedList.append("%s\t%s\t%s" % (match[0], match[1], match[2].strip().replace('\r', ' ').replace('\n', ' ').replace('  ', ' ')))
+    return "\n".join(formattedList)
 
 def tsvToSrt(fileObj):
     # Will hold final lines for the srt file.
@@ -31,7 +35,8 @@ def tsvToSrt(fileObj):
             formattedLine = "%s\n%s\n%s" % (cells[0], cells[1], cells[3])
             finalTextLines.append(formattedLine)
     # Convert the final lines array into a string to write to the file.
-    return "\n\n".join(finalTextLines)
+    fullText = "\n\n".join(finalTextLines)
+    return re.sub(r'\n\s*\n', '\n\n', fullText) # Remove duplicate newlines
 
 # Main
 # Set up the filename arguments
