@@ -19,7 +19,9 @@ def srtToTsv(text):
     matches = regex.findall(normalizedQuotes)
     formattedList = []
     for match in matches:
-        if match[0].isdigit(): formattedList.append("%s\t%s\t%s" % (match[0], match[1], match[2].strip().replace('\r', ' ').replace('\n', ' ').replace('  ', ' ')))
+        if match[0].isdigit(): 
+            formattedList.append("%s\t%s\t%s" % (match[0], match[1], 
+            match[2].strip().replace('\r', ' ').replace('\n', ' ').replace('  ', ' ')))
     return "\n".join(formattedList)
 
 def tsvToSrt(fileObj):
@@ -27,12 +29,41 @@ def tsvToSrt(fileObj):
     finalTextLines = []
     # Regex to look for timestamps, since those lines are the one we want to convert.
     regex = re.compile("(\d+:\d+\d+:\d+,\d+)")
+    # Regex used to find the places where we can split the string.
+    splitLinesRegex = re.compile(ur"[ ,.:;?!\u3002\uff61\ufe12]")
 
     # Go line by line of the tsv and convert them to srt format.
     for line in fileObj:
         if regex.search(line):
-            cells = line.split('\t') # Create array with each slot holding the contents of a cell in the spreadsheet.
-            formattedLine = "%s\n%s\n%s" % (cells[0], cells[1], cells[3])
+            # Create array with each slot representing a cell in the spreadsheet.
+            cells = line.split('\t') 
+            translatedText = cells[3]
+            finalText = translatedText # Holds the final text to put in the .srt
+            # If the line is too long, split it into 2.
+            if len(translatedText)  >= 60 and "\n" not in translatedText: 
+                # Find integer positions in the string where it can be split.
+                # Store as a dictionary, key=postion and value=current char
+                splitPtsDict = { m.start():m.group() for m in splitLinesRegex.finditer(translatedText)}
+                # Find if there are logical places to split like the end of a 
+                # sentence or a comma near the middle of the string to split at.
+                strMidwayPt = len(translatedText) / 2
+                nonSpacePositions = [x for x in splitPtsDict if splitPtsDict[x] != ' ' and x >= strMidwayPt - 10 and x <= strMidwayPt + 10]
+                
+                ptToSplitAt = 0
+                # Case where there is more than one place to split. 
+                if len(nonSpacePositions) > 1:
+                    # Find the closest one and split on that.
+                    ptToSplitAt = min(nonSpacePositions, key=lambda x:abs(x-strMidwayPt)) + 1
+                # Case where there is only one place to split.
+                elif len(nonSpacePositions) == 1:
+                    # Split immediately on the one place to split. 
+                    ptToSplitAt = nonSpacePositions[0] + 1
+                # Case where there is no obvious place to split.
+                else:
+                    # Split on the closest space after the midway point.
+                    ptToSplitAt = min([x for x in splitPtsDict if x > strMidwayPt], key=lambda x:x-strMidwayPt)
+                finalText = translatedText[:ptToSplitAt] + "\n" + translatedText[ptToSplitAt+1:]
+            formattedLine = "%s\n%s\n%s" % (cells[0], cells[1], finalText)
             finalTextLines.append(formattedLine)
     # Convert the final lines array into a string to write to the file.
     fullText = "\n\n".join(finalTextLines)
