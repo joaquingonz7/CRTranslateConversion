@@ -3,8 +3,6 @@ import os.path
 import re
 import io
 
-# Analysis Dictionary
-analysisDict = { "punctuation": 0, "spaces": 0 }
 # Method to determine whether the file passed in exists.
 def isValidFile(parser, arg, type):
     if not os.path.exists(arg) and type != "output":
@@ -17,7 +15,7 @@ def isValidFile(parser, arg, type):
 # Method used to split long lines
 def splitLongLine(longLine):
     # Regex used to find the places where we can split the string.
-    splitLinesRegex = re.compile(ur"[ ,.:;?!\u3002\uff61\ufe12]")
+    splitLinesRegex = re.compile(ur". | [ ,:;?!\u3001\u3002\uff61\ufe12]")
 
     finalText = longLine
     # If the line is too long, split it into 2.
@@ -35,12 +33,10 @@ def splitLongLine(longLine):
         if len(nonSpacePositions) > 1:
             # Find the closest one and split on that.
             ptToSplitAt = min(nonSpacePositions, key=lambda x:abs(x-strMidwayPt)) + 1
-            analysisDict["punctuation"] += 1
         # Case where there is only one place to split.
         elif len(nonSpacePositions) == 1:
             # Split immediately on the one place to split. 
             ptToSplitAt = nonSpacePositions[0] + 1
-            analysisDict["punctuation"] += 1
         # Case where there is no obvious place to split.
         else:
             # Split on the closest space after the midway point or on the closest punctuation
@@ -48,13 +44,11 @@ def splitLongLine(longLine):
             ptToSplitAt = min([x for x in splitPtsDict if x > strMidwayPt], key=lambda x:x-strMidwayPt)
             # If we split on punctionation, the split point should be at the space after the 
             # punctuation.
-            if splitPtsDict[ptToSplitAt] != ' ': 
-                ptToSplitAt += 1
-                analysisDict["punctuation"] += 1
-            else: analysisDict["spaces"] += 1
+            if splitPtsDict[ptToSplitAt] != ' ':
+                if longLine[ptToSplitAt+1] == ' ': ptToSplitAt += 1
 
-        finalText = longLine[:ptToSplitAt] + "\n" + longLine[ptToSplitAt+1:]
-    return finalText
+        finalText = longLine[:ptToSplitAt] + "\n" + longLine[ptToSplitAt:]
+    return finalText.replace("\n ", "\n")
 
 # Conversion methods.
 def srtToTsv(text):
@@ -86,7 +80,6 @@ def tsvToSrt(fileObj, performSplit):
             finalTextLines.append(formattedLine)
     # Convert the final lines array into a string to write to the file.
     fullText = "\n\n".join(finalTextLines)
-    print "Split on Punctuation: %d\tSplit on Spaces: %d" % (analysisDict["punctuation"], analysisDict["spaces"])
     return re.sub(r'\n\s*\n', '\n\n', fullText) # Remove duplicate newlines
 
 # Main
