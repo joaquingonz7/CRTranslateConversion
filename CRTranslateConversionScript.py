@@ -41,13 +41,19 @@ def splitLongLine(longLine):
         else:
             # Split on the closest space after the midway point or on the closest punctuation
             # outside of the 10 characters nearest the midway point.
-            ptToSplitAt = min([x for x in splitPtsDict if x > strMidwayPt], key=lambda x:x-strMidwayPt)
-            # If we split on punctionation, the split point should be at the space after the 
-            # punctuation.
-            if splitPtsDict[ptToSplitAt] != ' ':
-                if longLine[ptToSplitAt+1] == ' ': ptToSplitAt += 1
+            splitPtsList = [x for x in splitPtsDict if x > strMidwayPt]
+            if len(splitPtsList) > 0:
+                ptToSplitAt = min(splitPtsList, key=lambda x:x-strMidwayPt)
+                # If we split on punctionation, the split point should be at the space after the 
+                # punctuation.
+                if splitPtsDict[ptToSplitAt] != ' ':
+                    if longLine[ptToSplitAt+1] == ' ': ptToSplitAt += 1
+            # Case where there are not any good places to split at. 
+            else: ptToSplitAt = -1
 
-        finalText = longLine[:ptToSplitAt] + "\n" + longLine[ptToSplitAt:]
+        if ptToSplitAt != -1 : 
+            finalText = longLine[:ptToSplitAt] + "\n" + longLine[ptToSplitAt:]
+        else: finalText = longLine
     return finalText.replace("\n ", "\n")
 
 # Conversion methods.
